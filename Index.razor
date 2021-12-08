@@ -1,0 +1,146 @@
+@page "/"
+
+@using MudBlazor
+@inject HttpClient httpClient
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+       
+
+<MudButton @onclick="() => AddOrder()" ButtonType="MudBlazor.ButtonType.Button" Variant="Variant.Filled" Size="Size.Small">Add Order</MudButton>
+
+<MudTable @ref="tblOrder" T="Order" Items="@this.lstOrder.ToList()" Dense="true"
+          Hover="true" Breakpoint="Breakpoint.Sm" LoadingProgressColor="Color.Info" FixedHeader="true" Height="400px" ReadOnly="@IsTableReadonly"
+          CanCancelEdit="true" RowEditPreview="BeforeEdit" RowEditCancel="ResetItemToOriginalValues" RowEditCommit="ItemHasBeenCommitted" OnRowClick="OnRowClicked">
+
+    <HeaderContent>
+        <MudTh>Type</MudTh>
+        <MudTh>Product</MudTh>
+        <MudTh>Quantity</MudTh>
+        <MudTh Style="width:250px;">Action</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Type">@context.Type</MudTd>
+        <MudTd DataLabel="Product">@context.Product</MudTd>
+        <MudTd DataLabel="Quantity">@context.Quantity</MudTd>
+        <MudTd DataLabel="Action" Style="width:250px;">
+            <MudIconButton Icon="@Icons.Material.Filled.Edit" @onclick="@(()=>@MakeRowEditable(context))"
+                           Size="Size.Small" aria-label="Edit"></MudIconButton>
+            <MudIconButton Icon="@Icons.Material.Filled.Delete" @onclick="@(() => OnDeleteTestEntry(context))"
+                           Size="Size.Small" aria-label="delete" Color="Color.Error"></MudIconButton>
+        </MudTd>
+    </RowTemplate>
+    <RowEditingTemplate>
+        <MudTd DataLabel="Type">
+            <MudTextField @bind-Value="@context.Type" />
+        </MudTd>
+        <MudTd DataLabel="Product">
+            <MudTextField @bind-Value="@context.Product" />
+        </MudTd>
+        <MudTd DataLabel="Quantity">
+            <MudNumericField @bind-Value="@context.Quantity" HideSpinButtons="true" />
+        </MudTd>
+    </RowEditingTemplate>
+</MudTable>
+
+@code {
+
+    public class Order
+    {
+        public Guid Id { get; set; }
+        public string Type { get; set; }
+        public string Product { get; set; }
+        public int Quantity { get; set; }
+    }
+
+    public List<Order> lstOrder = new List<Order>();
+
+    private Order OrderBeforeEdit = null;
+    private Order ItemBeingEdited = null;
+    private MudTable<Order>? tblOrder;
+
+
+    private bool IsTableReadonly => ItemBeingEdited == null;
+
+    protected async override Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+    }
+
+    private void AddOrder()
+    {
+        if (tblOrder == null)
+            tblOrder = new MudTable<Order> { Items = this.lstOrder.ToList() };
+
+        Order order = new Order
+            {
+                Id = Guid.NewGuid(),
+                Type = "",
+                Product = "",
+                Quantity = 0
+            };
+
+        this.lstOrder.Add(order);
+        tblOrder.SetEditingItem(order);
+        this.ItemBeingEdited = order;
+        BeforeEdit(order);
+    }
+
+    private void ItemHasBeenCommitted(object element)
+    {
+        this.ItemBeingEdited = null;
+    }
+
+    private void MakeRowEditable(Order order)
+    {
+        this.ItemBeingEdited = order;
+        tblOrder.SetEditingItem(order);
+        BeforeEdit(order);
+    }
+
+    private void OnRowClicked(TableRowClickEventArgs<Order> e)
+    {
+        if (this.ItemBeingEdited != null)
+        {
+            if (e.Row.Item != this.ItemBeingEdited)
+            {
+                e.Row.IsEditable = false;
+            }
+            else
+            {
+                e.Row.IsEditable = true;
+            }
+        }
+    }
+
+    private void BeforeEdit(object element)
+    {
+        var order = element as Order;
+        OrderBeforeEdit = new()
+            {
+                Id = order.Id,
+                Type = order.Type,
+                Product = order.Product,
+                Quantity = order.Quantity
+            };
+
+    }
+
+    private void ResetItemToOriginalValues(object element)
+    {
+        this.ItemBeingEdited = null;
+        var order = element as Order;
+        order.Id = OrderBeforeEdit.Id;
+        order.Type = OrderBeforeEdit.Type;
+        order.Product = OrderBeforeEdit.Product;
+        order.Quantity = OrderBeforeEdit.Quantity;
+
+    }
+
+    private void OnDeleteTestEntry(Order order)
+    {
+        this.lstOrder.Remove(order);
+    }
+}
+
+
